@@ -99,20 +99,6 @@ print(document_scores)
 print(max_index)
 print(speech_titles[max_index])
 
-# for keyword in keywords:
-#     print (keyword)
-#     search_terms = keyword
-#     doc_vectors = tfidf_vectorizer.fit_transform([search_terms] + newTexts)
-
-#     # Calculate cosine similarity
-#     cosine_similarities = linear_kernel(doc_vectors[0:1], doc_vectors).flatten()
-#     document_scores = [item.item() for item in cosine_similarities[1:]]
-#     max_value = max(document_scores)
-#     max_index = document_scores.index(max_value)
-#     print(document_scores)
-#     print(max_index)
-#     print(speech_titles[max_index])
-
 # idk how we want to use this but we should
 rakeImpl = RakeImpl(" ".join(speeches))
 print (rakeImpl.getKeywords()[:10])
