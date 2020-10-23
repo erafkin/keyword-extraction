@@ -14,6 +14,13 @@ from nltk.corpus import stopwords
 import string
 import re
 from sklearn.metrics.pairwise import linear_kernel
+import gensim.downloader as api
+from gensim.corpora import Dictionary
+from gensim.models import TfidfModel
+from gensim.models import WordEmbeddingSimilarityIndex
+from gensim.similarities import SparseTermSimilarityMatrix
+from gensim.similarities import SoftCosineSimilarity
+
 
 def process_text(text):
     text = nltk.tokenize.casual.casual_tokenize(text)
@@ -40,10 +47,6 @@ for fle in files:
         speeches.append(text)
 sentences = []
 
-# with open('./inslee_speech.txt') as f:
-#     text = f.read()
-#     for sentence in text.split("."):
-#         sentences.append(sentence)
 for speech in speeches:
     for sentence in speech.split("."):
         sentences.append(sentence)
@@ -54,24 +57,61 @@ texts = [process_text(each) for each in speeches]
 newTexts = []
 for text in texts:
     newTexts.append(" ".join(text))
-tfidf_vectorizer = TfidfVectorizer(max_df=0.5, min_df=0, max_features=2000, use_idf=True, tokenizer=process_text)
 
+tfidf_vectorizer = TfidfVectorizer(max_df=0.5, min_df=0, max_features=2000, use_idf=True, tokenizer=process_text)
 textRankImpl = GensimTextRankImpl(" ".join(newTexts))
+
 keywords = textRankImpl.getKeywords()[:10]
 
-for keyword in keywords:
-    print (keyword)
-    search_terms = keyword
-    doc_vectors = tfidf_vectorizer.fit_transform([search_terms] + newTexts)
 
-    # Calculate cosine similarity
-    cosine_similarities = linear_kernel(doc_vectors[0:1], doc_vectors).flatten()
-    document_scores = [item.item() for item in cosine_similarities[1:]]
-    max_value = max(document_scores)
-    max_index = document_scores.index(max_value)
-    print(document_scores)
-    print(max_index)
-    print(speech_titles[max_index])
+# Load the model: this is a big file, can take a while to download and open
+glove = api.load("glove-wiki-gigaword-50")    
+similarity_index = WordEmbeddingSimilarityIndex(glove)
+
+search_terms = ["pollution"]
+doc_vectors = tfidf_vectorizer.fit_transform(search_terms + newTexts)
+
+# Build the term dictionary, TF-idf model
+dictionary = Dictionary(texts+[search_terms])
+tfidf = TfidfModel(dictionary=dictionary)
+# Create the term similarity matrix.  
+similarity_matrix = SparseTermSimilarityMatrix(similarity_index, dictionary, tfidf)
+# From: https://github.com/RaRe-Technologies/gensim/blob/develop/docs/notebooks/soft_cosine_tutorial.ipynb
+query_tf = tfidf[dictionary.doc2bow(search_terms)]
+
+index = SoftCosineSimilarity(
+            tfidf[[dictionary.doc2bow(document) for document in texts]],
+            similarity_matrix)
+
+doc_similarity_scores = index[query_tf]
+
+# Output the sorted similarity scores and documents
+sorted_indexes = np.argsort(doc_similarity_scores)[::-1]
+for idx in sorted_indexes:
+    print(f'{idx} \t {doc_similarity_scores[idx]:0.3f} \t {speech_titles[idx]}')
+
+# Calculate cosine similarity
+cosine_similarities = linear_kernel(doc_vectors[0:1], doc_vectors).flatten()
+document_scores = [item.item() for item in cosine_similarities[1:]]
+max_value = max(document_scores)
+max_index = document_scores.index(max_value)
+print(document_scores)
+print(max_index)
+print(speech_titles[max_index])
+
+# for keyword in keywords:
+#     print (keyword)
+#     search_terms = keyword
+#     doc_vectors = tfidf_vectorizer.fit_transform([search_terms] + newTexts)
+
+#     # Calculate cosine similarity
+#     cosine_similarities = linear_kernel(doc_vectors[0:1], doc_vectors).flatten()
+#     document_scores = [item.item() for item in cosine_similarities[1:]]
+#     max_value = max(document_scores)
+#     max_index = document_scores.index(max_value)
+#     print(document_scores)
+#     print(max_index)
+#     print(speech_titles[max_index])
 
 # idk how we want to use this but we should
 rakeImpl = RakeImpl(" ".join(speeches))
