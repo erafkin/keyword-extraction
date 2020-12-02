@@ -62,6 +62,7 @@ tfidf_vectorizer = TfidfVectorizer(max_df=0.5, min_df=0, max_features=2000, use_
 textRankImpl = GensimTextRankImpl(" ".join(newTexts))
 
 keywords = textRankImpl.getKeywords()[:10]
+print(keywords)
 
 
 # Load the model: this is a big file, can take a while to download and open
